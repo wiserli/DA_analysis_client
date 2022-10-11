@@ -1,29 +1,43 @@
 import json
 import requests
 
-# Example input - to annotate a conversation
-_value = "Hello\r\nHello, how are you?\r\nI am good, how about you\r\ngreat!\r\nis that a new tv?\r\nyes\r\nI heard " \
-        "it got some nice features.\r\nyes "
-
-# OR
-
-# Example input - for real-time detection
+# # Example input - for real-time usage
 text = ["yes",
         "I heard it got some nice features.",
         "yes"]
-value = "\r\n".join(text)
-# This will produce something like below:
-# value = "yes\r\nI heard it got some nice features.\r\nyes"
-# useful if you are reading a text file line by line
 
-# Sending request to the resting server
+# # Example input - to annotate conversation, this might take longer,
+# about 300 utterances/min for dialogue acts (both), recommended to send max 100 utt/request
+# about 10 utterances/min for all, recommended to send max 30 utt/request
+_text = ["Hello", "Hello, how are you?", "I am good, how about you", "great!", "Is that a new tv?",
+         "yes", "I heard it got some nice features.", "yes"]
+
+value = "\r\n".join(text)  # you can forward only text to server hence joining it with string '\r\n'
+
+link = "http://64.225.94.8:4000"  # This is our server static IP, so we wont change it anywhere soon
+# link = "http://api.wiserli.com:4000"  # We also have our own api link, but it takes longer to call over the request,
+# hence recommended to use the link with IP address
+
+# Sending request to the dialogue act server
+# "mode": "context" --> for context-based prediction < require 3 utterances >
+# "mode": "no_context" --> for no-context prediction < any number of utterances >
+# "mode": "both" --> for both context and no-context prediction < better minimum 3 utterances >
 try:
-    _link = "http://0.0.0.0:4000"      # Local network on computer
-    link = "http://tcp.jprq.io:38329"  # Tunnel websocket via jprq
-    # "mode": "context" --> for context-based prediction < require 3 utterances >
-    # "mode": "no_context" --> for no-context prediction < any number of utterances >
-    # "mode": "both" --> for both context and no-context prediction < better minimum 3 utterances >
-    results = requests.post(link + '/predict_das', json={"text": value, "mode": "context"})
+    results = requests.post(link + '/predict_das', json={"text": value, "mode": "both"})
+    print('server response time: ', results.elapsed.total_seconds(), "sec")
+    print(json.dumps(results.json()["result"], indent=3, sort_keys=True))
+    # for context model you are getting output only for the last utterance in the set of 3 utterances,
+    # so use only the last element from the lists in dictionary
+except json.decoder.JSONDecodeError:
+    print("Input error or the broken link.")
+
+# Sending request to the linguistic features server
+# "mode": "politeness" --> how polite are the utterances linguistically >
+# "mode": "support" --> how polite are the utterances linguistically >
+# "mode": "agreement" --> how polite are the utterances linguistically >
+# "mode": "all" --> get all the features in the output >
+try:
+    results = requests.post(link + '/predict_convo', json={"text": value, "mode": 'all'})
     print('server response time: ', results.elapsed.total_seconds(), "sec")
     print(json.dumps(results.json()["result"], indent=3, sort_keys=True))
 except json.decoder.JSONDecodeError:
